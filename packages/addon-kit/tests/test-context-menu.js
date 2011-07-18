@@ -265,6 +265,7 @@ exports.testSelectionContextMatchInTextField = function (test) {
   });
 };
 
+
 // Selection contexts should not cause items to appear when a selection does
 // not exist in a text field.
 exports.testSelectionContextNoMatchInTextField = function (test) {
@@ -283,6 +284,7 @@ exports.testSelectionContextNoMatchInTextField = function (test) {
     });
   });
 };
+
 
 // Selection contexts should not cause items to appear when a selection does
 // not exist.
