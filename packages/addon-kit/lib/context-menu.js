@@ -39,6 +39,8 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+"use strict";
+
 const {Ci} = require("chrome");
 
 if (!require("xul-app").is("Firefox")) {
