@@ -472,8 +472,6 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
         if not os.path.exists(os.path.join(env_root, 'packages')):
             env_root = os.path.dirname(env_root)
       
-      
-    print env_root
     config_args = get_config_args(options.config, env_root);
     
     # reparse configs with arguments from local.json
