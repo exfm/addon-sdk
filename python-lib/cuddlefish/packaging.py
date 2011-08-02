@@ -249,6 +249,7 @@ def build_config(root_dir, target_cfg, packagepath=[]):
     return Bunch(packages=packages)
 
 def get_deps_for_targets(pkg_cfg, targets):
+    print pkg_cfg, targets
     visited = []
     deps_left = [[dep, None] for dep in list(targets)]
 

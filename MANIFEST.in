@@ -1,0 +1,4 @@
+include .version
+recursive-include packages *
+recursive-include python-lib/cuddlefish *
+recursive-include python-lib/cuddlefish/app-extension/ *
