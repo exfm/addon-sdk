@@ -1,4 +1,6 @@
 import os
 
 def get_version(env_root):
-    return '1.0b6pre'
+    f = open(os.path.join(env_root, ".version"), "r")
+    sdk_version = f.read().strip()
+    return sdk_version

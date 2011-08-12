@@ -401,7 +401,7 @@ def run_development_mode(env_root, defaults):
         defaults=options, env_root=env_root)
 
 def get_config_args(name, env_root):
-    local_json = os.path.expanduser("~/jetpack.json")
+    local_json = os.path.join(env_root, "local.json")
     if not (os.path.exists(local_json) and
             os.path.isfile(local_json)):
         if name == "default":
@@ -464,14 +464,9 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
                          parser_groups=parser_groups,
                          usage=usage,
                          defaults=defaults)
-                
+
     (options, args) = parse_args(**parser_kwargs)
-    env_root = os.path.dirname(__file__)
-    if not os.path.exists(os.path.join(env_root, 'packages')):
-        env_root = os.path.dirname(env_root)
-        if not os.path.exists(os.path.join(env_root, 'packages')):
-            env_root = os.path.dirname(env_root)
-      
+
     config_args = get_config_args(options.config, env_root);
     
     # reparse configs with arguments from local.json

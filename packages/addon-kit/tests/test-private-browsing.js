@@ -57,9 +57,6 @@ if (pbService) {
     pbService.privateBrowsingEnabled = true;
     test.assert(pb.isActive,
                 "private-browsing.isActive is correct after modifying PB service");
-
-    // Switch back to normal mode.
-    pbService.privateBrowsingEnabled = false;
   };
 
   // tests that activating does put the browser into private browsing mode
@@ -118,7 +115,7 @@ if (pbService) {
       test.fail("should not be called:x");
     });
     loader.unload();
-
+    
     // Then switch to private mode in order to check that the previous instance
     // is correctly destroyed
     pb.activate();
@@ -126,9 +123,6 @@ if (pbService) {
       require("timer").setTimeout(function () {
         test.assert(!called, 
           "First private browsing instance is destroyed and inactive");
-
-        // Must reset to normal mode, so that next test starts with it.
-        pb.deactivate();
         test.done();
       }, 0);
     });

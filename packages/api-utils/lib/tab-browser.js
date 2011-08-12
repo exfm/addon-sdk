@@ -36,6 +36,7 @@
  *
  * ***** END LICENSE BLOCK ***** */
 
+"use strict";
 const {Cc,Ci,Cu} = require("chrome");
 var NetUtil = {};
 Cu.import("resource://gre/modules/NetUtil.jsm", NetUtil);
@@ -59,6 +60,17 @@ if (!require("./xul-app").is("Firefox")) {
   ].join(""));
 }
 
+function onBrowserLoad(callback, event) {
+  if (event.target && event.target.defaultView == this) {
+    this.removeEventListener("load", onBrowserLoad, true);
+    try {
+      require("timer").setTimeout(function () {
+        callback(event);
+      }, 10);
+    } catch (e) { console.exception(e); }
+  }
+}
+
 // Utility function to open a new browser window.
 function openBrowserWindow(callback, url) {
   let ww = Cc["@mozilla.org/embedcomp/window-watcher;1"].
@@ -68,20 +80,8 @@ function openBrowserWindow(callback, url) {
   urlString.data = url;
   let window = ww.openWindow(null, "chrome://browser/content/browser.xul",
                              "_blank", "chrome,all,dialog=no", urlString);
-  if (callback) {
-    function onLoad(event) {
-      if (event.target && event.target.defaultView == window) {
-        window.removeEventListener("load", onLoad, true);
-        try {
-          require("./timer").setTimeout(function () {
-            callback(event);
-          }, 10);
-        } catch (e) { console.exception(e); }
-      }
-    }
-
-    window.addEventListener("load", onLoad, true);
-  }
+  if (callback)
+    window.addEventListener("load", onBrowserLoad.bind(window, callback), true);
 
   return window;
 }
@@ -131,12 +131,12 @@ exports.addTab = function addTab(url, options) {
       win.gBrowser.selectedTab = tab;
     if (options.onLoad) {
       let tabBrowser = win.gBrowser.getBrowserForTab(tab);
-      tabBrowser.addEventListener("load", function(e) {
+      tabBrowser.addEventListener("load", function onLoad(e) {
         if (e.target.defaultView.content.location == "about:blank")
           return;
         // remove event handler from addTab - don't want notified
         // for subsequent loads in same tab.
-        tabBrowser.removeEventListener("load", arguments.callee, true);
+        tabBrowser.removeEventListener("load", onLoad, true);
         require("./errors").catchAndLog(function(e) options.onLoad(e))(e);
       }, true);
     }
@@ -180,17 +180,17 @@ Tracker.prototype = {
     if (this._window && window != this._window)
       return;
 
-    for (browser in tabBrowserIterator(window))
+    for (let browser in tabBrowserIterator(window))
       this._browsers.push(browser);
     if (this._delegate)
-      for (browser in tabBrowserIterator(window))
+      for (let browser in tabBrowserIterator(window))
         this._delegate.onTrack(browser);
   },
   onUntrack: function onUntrack(window) {
     if (this._window && window != this._window)
       return;
 
-    for (browser in tabBrowserIterator(window)) {
+    for (let browser in tabBrowserIterator(window)) {
       let index = this._browsers.indexOf(browser);
       if (index != -1)
         this._browsers.splice(index, 1);
@@ -198,7 +198,7 @@ Tracker.prototype = {
         console.error("internal error: browser tab not found");
     }
     if (this._delegate)
-      for (browser in tabBrowserIterator(window))
+      for (let browser in tabBrowserIterator(window))
         this._delegate.onUntrack(browser);
   },
   get length() {
@@ -253,7 +253,7 @@ TabTracker.prototype = {
     }
   },
   onTrack: function onTrack(tabbrowser) {
-    for (tab in tabIterator(tabbrowser))
+    for (let tab in tabIterator(tabbrowser))
       this._safeTrackTab(tab);
     var self = this;
     this._TAB_EVENTS.forEach(
@@ -262,7 +262,7 @@ TabTracker.prototype = {
       });
   },
   onUntrack: function onUntrack(tabbrowser) {
-    for (tab in tabIterator(tabbrowser))
+    for (let tab in tabIterator(tabbrowser))
       this._safeUntrackTab(tab);
     var self = this;
     this._TAB_EVENTS.forEach(
@@ -543,8 +543,8 @@ function openURLInNewWindow(options, tabConstructor) {
       let win = e.target.defaultView;
       let tabEl = win.gBrowser.tabContainer.childNodes[0];
       let tabBrowser = win.gBrowser.getBrowserForTab(tabEl);
-      tabBrowser.addEventListener("load", function(e) {
-        tabBrowser.removeEventListener("load", arguments.callee, true);
+      tabBrowser.addEventListener("load", function onLoad(e) {
+        tabBrowser.removeEventListener("load", onLoad, true);
         let tab = tabConstructor(tabEl);
         require("./errors").catchAndLog(function(e) options.onOpen(e))(tab);
       }, true);
@@ -565,10 +565,10 @@ function openURLInNewTab(options, window, tabConstructor) {
     window.gBrowser.pinTab(tabEl);
   if (options.onOpen) {
     let tabBrowser = window.gBrowser.getBrowserForTab(tabEl);
-    tabBrowser.addEventListener("load", function(e) {
+    tabBrowser.addEventListener("load", function onLoad(e) {
       // remove event handler from addTab - don't want to be notified
       // for subsequent loads in same tab.
-      tabBrowser.removeEventListener("load", arguments.callee, true);
+      tabBrowser.removeEventListener("load", onLoad, true);
       let tab = tabConstructor(tabEl);
       require("./timer").setTimeout(function() {
         require("./errors").catchAndLog(function(tab) options.onOpen(tab))(tab);
@@ -709,7 +709,7 @@ ModuleTabTracker.prototype = {
     }
   },
   onTrack: function onTrack(tabbrowser) {
-    for (tab in tabIterator(tabbrowser))
+    for (let tab in tabIterator(tabbrowser))
       this._safeTrackTab(tab);
     tabbrowser.tabContainer.addEventListener("TabOpen", this, false);
     tabbrowser.tabContainer.addEventListener("TabClose", this, false);
@@ -717,7 +717,7 @@ ModuleTabTracker.prototype = {
     tabbrowser.ownerDocument.defaultView.gBrowser.addEventListener("DOMContentLoaded", this, false);
   },
   onUntrack: function onUntrack(tabbrowser) {
-    for (tab in tabIterator(tabbrowser))
+    for (let tab in tabIterator(tabbrowser))
       this._safeUntrackTab(tab);
     tabbrowser.tabContainer.removeEventListener("TabOpen", this, false);
     tabbrowser.tabContainer.removeEventListener("TabClose", this, false);
