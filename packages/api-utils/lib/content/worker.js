@@ -556,8 +556,9 @@ const Worker = AsyncEventEmitter.compose({
   
   _documentUnload: function _documentUnload(subject, topic, data) {
     let innerWinID = subject.QueryInterface(Ci.nsISupportsPRUint64).data;
-    if (innerWinID != this._windowID) return;
+    if (innerWinID != this._windowID) return false;
     this._workerCleanup();
+    return true;
   },
 
   get url() {
