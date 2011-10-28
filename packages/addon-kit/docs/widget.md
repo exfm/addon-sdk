@@ -83,7 +83,7 @@ Nuvola icon set, http://www.icon-king.com/projects/nuvola/ which is made
 available under the LGPL 2.1:
 http://www.gnu.org/licenses/old-licenses/lgpl-2.1.html -->
 
-<img class="image-center" src="media/screenshots/widget-panel-clock.png"
+<img class="image-center" src="static-files/media/screenshots/widget-panel-clock.png"
 alt="Panel attached to a widget">
 <br>
 
@@ -145,7 +145,7 @@ create your content scripts in separate files and pass their URLs using the
 [Working with Content Scripts](dev-guide/addon-development/web-content.html) for more
 information.
 
-    const widgets = require("widget");
+    var widgets = require("widget");
 
     // A basic click-able image widget.
     widgets.Widget({

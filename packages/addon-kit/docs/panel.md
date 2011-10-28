@@ -39,19 +39,19 @@ This is what a panel with no custom styling looks like.
 
 On OS X it will look like this:
 
-<img class="image-center" src="media/screenshots/default-panel-osx.png"
+<img class="image-center" src="static-files/media/screenshots/default-panel-osx.png"
 alt="OS X panel default style">
 <br>
 
 On Windows 7 it will look like this:
 
-<img class="image-center" src="media/screenshots/default-panel-windows.png"
+<img class="image-center" src="static-files/media/screenshots/default-panel-windows.png"
 alt="Windows 7 panel default style">
 <br>
 
 On Ubuntu it will look like this:
 
-<img class="image-center" src="media/screenshots/default-panel-ubuntu.png"
+<img class="image-center" src="static-files/media/screenshots/default-panel-ubuntu.png"
 alt="Ubuntu panel default style">
 <br>
 
@@ -66,7 +66,7 @@ Examples
 
 Create and show a simple panel with content from the `data/` directory:
 
-    const data = require("self").data;
+    var data = require("self").data;
     var panel = require("panel").Panel({
       contentURL: data.url("foo.html")
     });
