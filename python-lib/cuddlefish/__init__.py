@@ -517,7 +517,7 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
             docs_home = generate.generate_docs(env_root, filename=args[1])
         else:
             docs_home = generate.generate_docs(env_root)
-        webbrowser.open(docs_home)
+            webbrowser.open(docs_home)
         return
     elif command == "sdocs":
         from cuddlefish.docs import generate
@@ -578,17 +578,6 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
 
     target = target_cfg.name
 
-    # the harness_guid is used for an XPCOM class ID. We use the
-    # JetpackID for the add-on ID and the XPCOM contract ID.
-    if "harnessClassID" in target_cfg:
-        # For the sake of non-bootstrapped extensions, we allow to specify the
-        # classID of harness' XPCOM component in package.json. This makes it
-        # possible to register the component using a static chrome.manifest file
-        harness_guid = target_cfg["harnessClassID"]
-    else:
-        import uuid
-        harness_guid = str(uuid.uuid4())
-
     # TODO: Consider keeping a cache of dynamic UUIDs, based
     # on absolute filesystem pathname, in the root directory
     # or something.
@@ -615,12 +604,10 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
     if "id" in target_cfg:
         jid = target_cfg["id"]
     else:
-        jid = harness_guid
+        import uuid
+        jid = str(uuid.uuid4())
     if not ("@" in jid or jid.startswith("{")):
         jid = jid + "@jetpack"
-
-    unique_prefix = get_unique_prefix(jid)
-    bundle_id = jid
 
     targets = [target]
     if command == "test":
@@ -636,12 +623,11 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
     deps = packaging.get_deps_for_targets(pkg_cfg, targets)
 
     from cuddlefish.manifest import build_manifest, ModuleNotFoundError
-    uri_prefix = "resource://%s" % unique_prefix
     # Figure out what loader files should be scanned. This is normally
     # computed inside packaging.generate_build_for_target(), by the first
     # dependent package that defines a "loader" property in its package.json.
     # This property is interpreted as a filename relative to the top of that
-    # file, and stored as a URI in build.loader . generate_build_for_target()
+    # file, and stored as a path in build.loader . generate_build_for_target()
     # cannot be called yet (it needs the list of used_deps that
     # build_manifest() computes, but build_manifest() needs the list of
     # loader files that it computes). We could duplicate or factor out this
@@ -656,7 +642,7 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
     loader_modules = [("api-utils", "lib", "cuddlefish", cuddlefish_js_path)]
     scan_tests = command == "test"
     try:
-        manifest = build_manifest(target_cfg, pkg_cfg, deps, uri_prefix, scan_tests,
+        manifest = build_manifest(target_cfg, pkg_cfg, deps, scan_tests,
                                   loader_modules)
     except ModuleNotFoundError, e:
         print str(e)
@@ -674,24 +660,11 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
 
     build = packaging.generate_build_for_target(
         pkg_cfg, target, used_deps,
-        prefix=unique_prefix,  # used to create resource: URLs
         include_dep_tests=options.dep_tests
         )
 
-    if 'resources' in build:
-        resources = build.resources
-        for name in resources:
-            resources[name] = os.path.abspath(resources[name])
-
-    harness_contract_id = ('@mozilla.org/harness-service;1?id=%s' % jid)
     harness_options = {
-        'bootstrap': {
-            'contractID': harness_contract_id,
-            'classID': '{%s}' % harness_guid
-            },
         'jetpackID': jid,
-        'bundleID': bundle_id,
-        'uriPrefix': uri_prefix,
         'staticArgs': options.static_args,
         'name': target,
         }
@@ -703,10 +676,10 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
         # This should be contained in the test runner package.
         # maybe just do: target_cfg.main = 'test-harness/run-tests'
         harness_options['main'] = 'test-harness/run-tests'
-        harness_options['mainURI'] = manifest.get_manifest_entry("test-harness", "lib", "run-tests").get_uri(uri_prefix)
+        harness_options['mainPath'] = manifest.get_manifest_entry("test-harness", "lib", "run-tests").get_path()
     else:
         harness_options['main'] = target_cfg.get('main')
-        harness_options['mainURI'] = manifest.top_uri
+        harness_options['mainPath'] = manifest.top_path
     extra_environment["CFX_COMMAND"] = command
 
     for option in inherited_options:
@@ -726,14 +699,17 @@ def run(arguments=sys.argv[1:], target_cfg=None, pkg_cfg=None,
         mydir = os.path.dirname(os.path.abspath(__file__))
         app_extension_dir = os.path.join(mydir, "app-extension")
 
-    harness_options['manifest'] = manifest.get_harness_options_manifest(uri_prefix)
+    if target_cfg.get('preferences'):
+        harness_options['preferences'] = target_cfg.get('preferences')
+
+    harness_options['manifest'] = manifest.get_harness_options_manifest()
     harness_options['allTestModules'] = manifest.get_all_test_modules()
 
     from cuddlefish.rdf import gen_manifest, RDFUpdate
 
     manifest_rdf = gen_manifest(template_root_dir=app_extension_dir,
                                 target_cfg=target_cfg,
-                                bundle_id=bundle_id,
+                                jid=jid,
                                 update_url=options.update_url,
                                 bootstrap=True,
                                 enable_mobile=options.enable_mobile)

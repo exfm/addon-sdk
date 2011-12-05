@@ -72,7 +72,8 @@ function setDefaultPrefs() {
           branch.setBoolPref(key, val);
           break;
         case "number":
-          branch.setIntPref(key, val);
+          if (value % 1 == 0) // number must be a integer, otherwise ignore it
+            branch.setIntPref(key, val);
           break;
         case "string":
           branch.setCharPref(key, val);
@@ -148,21 +149,6 @@ function on(topic) {
   }
 }
 
-/**
- * Maps each path - value from `resources` hash in the resources protocol
- * handler with an associated key. Each path is resolved relative to the given
- * `root` path.
- */
-function mapResources(resources) {
-  Object.keys(resources).forEach(function(id) {
-    let path = resources[id];
-    let uri = Array.isArray(path) ? URI + '/' + path.join('/')
-                                  : 'file://' + path;
-    uri = ioService.newURI(uri + '/', null, null);
-    resourceHandler.setSubstitution(id, uri);
-  });
-}
-
 // We don't do anything on install & uninstall yet, but in a future
 // we should allow add-ons to cleanup after uninstall.
 function install(data, reason) {}
@@ -178,13 +164,24 @@ function startup(data, reason) {
   let options = JSON.parse(readURI(URI + './harness-options.json'));
   options.loadReason = REASON[reason];
 
-  // TODO: This is unnecessary overhead per add-on instance. Manifest should
-  // probably contain paths relative to add-on root to avoid this, but that
-  // requires simpler package layout that is being worked under the bug-660629.
-  mapResources(options.resources);
+  // Register a new resource "domain" for this addon which is mapping to
+  // XPI's `resources` folder.
+  // Generate the domain name by using jetpack ID, which is the extension ID
+  // by stripping common characters that doesn't work as a domain name:
+  let uuidRe =
+    /^\{([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})\}$/;
+  let domain = options.jetpackID.toLowerCase()
+                            .replace(/@/g, "-at-")
+                            .replace(/\./g, "-dot-")
+                            .replace(uuidRe, "$1");
+
+  let resourcesUri = ioService.newURI(URI + '/resources/', null, null);
+  resourceHandler.setSubstitution(domain, resourcesUri);
+  options.uriPrefix = "resource://" + domain + "/";
 
   // Import loader module using `Cu.imports` and bootstrap module loader.
-  loader = Cu.import(options.loader).Loader.new(options);
+  let loaderUri = options.uriPrefix + options.loader;
+  loader = Cu.import(loaderUri).Loader.new(options);
 
   // Creating a promise, that will be delivered once application is ready.
   // If application is at startup then promise is delivered on
@@ -196,7 +193,7 @@ function startup(data, reason) {
   // on add-on.
   promise(function() {
     try {
-      loader.spawn(options.main, options.mainURI);
+      loader.spawn(options.main, options.mainPath);
     } catch (error) {
       // If at this stage we have an error only thing we can do is report about
       // it via error console. Keep in mind that error won't automatically show
@@ -209,6 +206,14 @@ function startup(data, reason) {
 
 function shutdown(data, reason) {
   // If loader is already present unload it, since add-on is disabled.
-  if (loader)
+  if (loader) {
+    reason = REASON[reason];
+    let system = loader.require('api-utils/system');
     loader.unload(reason);
+    // If add-on is lunched via `cfx run` we need to use `system.exit` to let
+    // cfx know we're done (`cfx test` will take care of exit so we don't do
+    // anything here).
+    if (system.env.CFX_COMMAND === 'run' && reason === 'shutdown')
+      system.exit(0);
+  }
 };
